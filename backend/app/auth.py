@@ -1,11 +1,50 @@
-from jose import jwt
-from datetime import datetime, timedelta
+from fastapi import HTTPException
+import psycopg2
 import os
+import hashlib
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret")
-ALGORITHM = "HS256"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-def create_token(data: dict):
-    payload = data.copy()
-    payload["exp"] = datetime.utcnow() + timedelta(days=7)
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+def get_db():
+    return psycopg2.connect(DATABASE_URL)
+
+
+def hash_password(password: str):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def register_user(email, password):
+    conn = get_db()
+    cur = conn.cursor()
+
+    try:
+        cur.execute(
+            "INSERT INTO users (email, password) VALUES (%s, %s)",
+            (email, hash_password(password))
+        )
+        conn.commit()
+    except:
+        raise HTTPException(status_code=400, detail="User exists")
+
+    cur.close()
+    conn.close()
+    return {"status": "user created"}
+
+
+def login_user(email, password):
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT id FROM users WHERE email=%s AND password=%s",
+        (email, hash_password(password))
+    )
+
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid login")
+
+    return {"user_id": user[0]}
