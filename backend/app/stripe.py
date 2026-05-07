@@ -3,16 +3,20 @@ import os
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
-def create_checkout(email: str):
+def create_checkout_session(user_id):
     session = stripe.checkout.Session.create(
-        mode="subscription",
         payment_method_types=["card"],
         line_items=[{
-            "price": os.getenv("STRIPE_PRICE_ID"),
-            "quantity": 1
+            "price_data": {
+                "currency": "usd",
+                "product_data": {"name": "Real Estate AI SaaS"},
+                "unit_amount": 2900,
+            },
+            "quantity": 1,
         }],
-        success_url="https://yourapp.com/success",
-        cancel_url="https://yourapp.com/cancel",
-        customer_email=email
+        mode="subscription",
+        success_url="https://your-app.onrender.com/dashboard.html",
+        cancel_url="https://your-app.onrender.com",
     )
+
     return session.url
